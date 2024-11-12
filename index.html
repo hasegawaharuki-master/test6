@@ -63,7 +63,7 @@
         const firebaseConfig = {
             databaseURL: "https://kennkyuu-bb663-default-rtdb.firebaseio.com/"
         };
-        const app = firebase.initializeApp(firebaseConfig);
+        firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
         // ニックネーム入力後に商品リストを表示する関数
@@ -124,7 +124,7 @@
 
             // Firebaseへデータ送信
             if (totalAmount > 0) {
-                firebase.database().ref('purchases').push({
+                database.ref('purchases').push({
                     nickname: nickname,
                     products: selectedProducts,
                     totalAmount: totalAmount,
