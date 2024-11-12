@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会計システム</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .product { margin-bottom: 10px; }
+        .total { font-weight: bold; margin-top: 20px; }
+        #product-section { display: none; } /* 商品セクションを初期状態で非表示 */
+    </style>
+    <!-- Firebase App (必須) と Realtime Database の SDK -->
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js"></script>
+</head>
+<body>
+    <h2>会計システム</h2>
+
+    <!-- ニックネーム入力エリア -->
+    <div id="nickname-section">
+        <label for="nickname">ニックネームを入力してください:</label>
+        <input type="text" id="nickname" required>
+        <button onclick="startShopping()">開始</button>
+    </div>
+
+    <!-- 商品リストと合計金額表示 -->
+    <div id="product-section">
+        <h3 id="welcome-message"></h3> <!-- ユーザーのニックネームを表示 -->
+        
+        <div class="product">
+            <label>
+                <input type="checkbox" class="item" data-price="1000"> 商品A - ¥1000
+            </label>
+            <input type="number" class="quantity" value="1" min="1" disabled>
+        </div>
+        <div class="product">
+            <label>
+                <input type="checkbox" class="item" data-price="1500"> 商品B - ¥1500
+            </label>
+            <input type="number" class="quantity" value="1" min="1" disabled>
+        </div>
+        <div class="product">
+            <label>
+                <input type="checkbox" class="item" data-price="2000"> 商品C - ¥2000
+            </label>
+            <input type="number" class="quantity" value="1" min="1" disabled>
+        </div>
+        <div class="product">
+            <label>
+                <input type="checkbox" class="item" data-price="2500"> 商品D - ¥2500
+            </label>
+            <input type="number" class="quantity" value="1" min="1" disabled>
+        </div>
+
+        <div class="total">合計金額: <span id="total">¥0</span></div>
+        <!-- 会計を決定するボタン -->
+        <button onclick="confirmPurchase()">会計を決定する</button>
+    </div>
+
+    <script>
+        // Firebaseの初期化
+        const firebaseConfig = {
+            databaseURL: "https://kennkyuu-bb663-default-rtdb.firebaseio.com/"
+        };
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // ニックネーム入力後に商品リストを表示する関数
+        function startShopping() {
+            const nickname = document.getElementById('nickname').value.trim();
+            if (nickname) {
+                document.getElementById('welcome-message').textContent = `${nickname} さん、ようこそ！`;
+                document.getElementById('nickname-section').style.display = 'none';
+                document.getElementById('product-section').style.display = 'block';
+            } else {
+                alert('ニックネームを入力してください。');
+            }
+        }
+
+        // 合計金額を計算する関数
+        function calculateTotal() {
+            let total = 0;
+            document.querySelectorAll('.item').forEach((checkbox, index) => {
+                const quantityInput = document.querySelectorAll('.quantity')[index];
+                if (checkbox.checked) {
+                    const price = parseInt(checkbox.getAttribute('data-price'));
+                    const quantity = parseInt(quantityInput.value);
+                    total += price * quantity;
+                }
+            });
+            document.getElementById('total').textContent = `¥${total}`;
+        }
+
+        // チェックボックスと数量入力のイベントリスナーを設定する関数
+        function setEventListeners() {
+            document.querySelectorAll('.item').forEach((checkbox, index) => {
+                const quantityInput = document.querySelectorAll('.quantity')[index];
+                checkbox.addEventListener('change', () => {
+                    quantityInput.disabled = !checkbox.checked;
+                    if (!checkbox.checked) quantityInput.value = 1;
+                    calculateTotal();
+                });
+                quantityInput.addEventListener('input', calculateTotal);
+            });
+        }
+
+        // ページ読み込み時にイベントリスナーを設定
+        setEventListeners();
+
+        // 購入データをFirebaseに送信する関数
+        function confirmPurchase() {
+            const nickname = document.getElementById('nickname').value.trim();
+            const totalAmount = parseInt(document.getElementById('total').textContent.replace('¥', ''));
+            
+            // 商品の注文内容を収集
+            const selectedProducts = [];
+            document.querySelectorAll('.item:checked').forEach((checkbox, index) => {
+                const productName = checkbox.nextSibling.textContent.trim();
+                const price = parseInt(checkbox.getAttribute('data-price'));
+                const quantity = parseInt(document.querySelectorAll('.quantity')[index].value);
+                selectedProducts.push({ productName, price, quantity });
+            });
+
+            // Firebaseへデータ送信
+            if (totalAmount > 0) {
+                firebase.database().ref('purchases').push({
+                    nickname: nickname,
+                    products: selectedProducts,
+                    totalAmount: totalAmount,
+                    timestamp: new Date().toISOString()
+                }).then(() => {
+                    alert("購入情報がFirebaseに保存されました！");
+                }).catch((error) => {
+                    console.error("データ保存中にエラーが発生しました:", error);
+                    alert("エラー: 購入情報を保存できませんでした");
+                });
+            } else {
+                alert("何も選択されていません。");
+            }
+        }
+    </script>
+</body>
+</html>
